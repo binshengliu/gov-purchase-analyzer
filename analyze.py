@@ -26,6 +26,7 @@ money_regexp_obj = re.compile(money_regexp)
 
 
 def analyze_money(filepath):
+    """Analyze biddings from file."""
     bid_info = BidInfo()
     if not os.path.isfile(filepath):
         print("{} not found".format(filepath))
@@ -63,6 +64,8 @@ def analyze_money(filepath):
 
     excel.write_location_stats_sheet(location_stats)
 
+    excel.write_comments()
+
     excel.close()
 
     # webbrowser.open(os.path.join("html", html))
@@ -71,6 +74,7 @@ def analyze_money(filepath):
 
 
 def dedup_by_project_name(bid_info):
+    """Deduplicate biddings by their descriptions."""
     bid_map = {}
 
     for entry in bid_info.entries:
@@ -120,6 +124,7 @@ announce_obj2 = re.compile(announce_regexp2)
 
 
 def formalize_project_name(desc):
+    """Remove trivial text from bidding description"""
     desc = re.sub('\s', '', desc)
     desc = re.sub('\(', '（', desc)
     desc = re.sub('\)', '）', desc)
@@ -162,12 +167,14 @@ location_table = [("呼和浩特", "呼和浩特市"),
 
 
 def find_location(buyer, desc, content):
+    """Find location in buyer, description, and content."""
     return find_location_helper(buyer) or \
         find_location_helper(desc) or \
         find_location_helper(content)
 
 
 def find_location_helper(string):
+    """Find location in a string."""
     for location in location_table:
         if re.search(location[0], string):
             return location[1]
@@ -215,32 +222,35 @@ def find_location_helper(string):
 
 
 def find_money(soup):
-        content = soup.find("div", class_="vF_detail_main")
-        if not content:
-            content = soup.find("div", class_="vT_detail_main")
-            if not content:
-                return None
-        content = content.text
-        # print(content)
-        # Pdb().set_trace()
-        min_num = None
-        for match in money_regexp_obj.finditer(content):
-            start = match.start()
-            # print("Found match: {}".format(content[start:start+guess_len]))
-            parse_result = parse_num(content[start:])
-            if parse_result:
-                if parse_result < 10000:
-                    continue
-                if not min_num:
-                    min_num = parse_result
-                else:
-                    min_num = min(parse_result, min_num)
+    """Find money string in a html page."""
 
-        # print("Found money: {}".format(context))
-        return min_num
+    content = soup.find("div", class_="vF_detail_main")
+    if not content:
+        content = soup.find("div", class_="vT_detail_main")
+        if not content:
+            return None
+    content = content.text
+    # print(content)
+    # Pdb().set_trace()
+    min_num = None
+    for match in money_regexp_obj.finditer(content):
+        start = match.start()
+        # print("Found match: {}".format(content[start:start+guess_len]))
+        parse_result = parse_num(content[start:])
+        if parse_result:
+            if parse_result < 10000:
+                continue
+            if not min_num:
+                min_num = parse_result
+            else:
+                min_num = min(parse_result, min_num)
+
+    # print("Found money: {}".format(context))
+    return min_num
 
 
 def isfloat(x):
+    """Test if a string is a valid float number."""
     try:
         float(x)
     except ValueError:
@@ -250,49 +260,51 @@ def isfloat(x):
 
 
 def starts_with_wan(string):
+    """Test if a string starts with Chinese \"ten thousand\"."""
     return string.startswith('万') or string.startswith('万元') \
         or string.startswith('（万）') or string.startswith('（万元）') \
         or string.startswith('(万元)')
 
 
 def parse_num(string):
-        candidate = ''
-        pos = 0
-        while string[pos].isspace():
-            pos += 1
+    """Try to find a number in a string."""
+    candidate = ''
+    pos = 0
+    while string[pos].isspace():
+        pos += 1
 
-        found_digit = False
-        for i in range(min(len(string), guess_len)):
-            # print(string[i])
-            if isfloat(string[i]):
-                pos = i
-                found_digit = True
-                break
+    found_digit = False
+    for i in range(min(len(string), guess_len)):
+        # print(string[i])
+        if isfloat(string[i]):
+            pos = i
+            found_digit = True
+            break
 
-        if not found_digit:
-            # print("Didn't find an digit.")
-            return None
-
-        char = string[pos]
-        while char == ',' or isfloat(candidate + char):
-            if isfloat(candidate + char):
-                candidate += char
-            pos += 1
-            if pos >= len(string):
-                break
-            char = string[pos]
-
-        ten_thousand = False
-        if starts_with_wan(string[pos:]):
-            ten_thousand = True
-
-        if isfloat(candidate):
-            num = float(candidate)
-            if ten_thousand:
-                num *= 10000
-            return num
-
+    if not found_digit:
+        # print("Didn't find an digit.")
         return None
+
+    char = string[pos]
+    while char == ',' or isfloat(candidate + char):
+        if isfloat(candidate + char):
+            candidate += char
+        pos += 1
+        if pos >= len(string):
+            break
+        char = string[pos]
+
+    ten_thousand = False
+    if starts_with_wan(string[pos:]):
+        ten_thousand = True
+
+    if isfloat(candidate):
+        num = float(candidate)
+        if ten_thousand:
+            num *= 10000
+        return num
+
+    return None
 
 
 PRJ_COL = 0
@@ -307,9 +319,8 @@ TOTAL_COL = 9
 
 
 class MoneyExcel(object):
-    """Documentation for MoneyExcel
+    """Write analysis result to an excel file."""
 
-    """
     def __init__(self, filename):
         super(MoneyExcel, self).__init__()
         self.filename = filename
@@ -339,6 +350,7 @@ class MoneyExcel(object):
         fmt.set_bg_color(color)
 
     def init_header(self):
+        """Init excel table header."""
         self.worksheet.write(0, PRJ_COL, "项目")
         self.worksheet.set_column(PRJ_COL, PRJ_COL, 40)
 
@@ -357,6 +369,7 @@ class MoneyExcel(object):
         self.worksheet.set_column(URL_COL, URL_COL, 60)
 
     def write_entry(self, desc, date, buyer, location, money, original_wrong, url):
+        """Write a bidding entry as a row."""
         self.worksheet.write(self.row, PRJ_COL, desc)
 
         self.worksheet.write_datetime(self.row, DATE_COL, date, self.date_format)
@@ -384,6 +397,7 @@ class MoneyExcel(object):
         self.row += 1
 
     def write_statistics(self):
+        """Write median, average, and sum of the money."""
         self.worksheet.write(self.row, 0, "中位数")
         self.worksheet.write_formula(self.row, MONEY_COL,
                                      '=(MEDIAN(E2:E{}))'.format(self.data_count + 1),
@@ -403,6 +417,7 @@ class MoneyExcel(object):
         self.row += 1
 
     def write_location_stats_sheet(self, location_stats):
+        """Write statistics by location."""
         worksheet_loc = self.workbook.add_worksheet("按地点统计")
         worksheet_loc.set_column(0, 0, 10)
         worksheet_loc.set_column(1, 1, 20)
@@ -417,7 +432,8 @@ class MoneyExcel(object):
             worksheet_loc.write(row, 1, v, self.money_format)
             row += 1
 
-    def close(self):
+    def write_comments(self):
+        """Write comments."""
         self.worksheet.set_column(COMMENT_COL, COMMENT_COL, 25)
         self.worksheet.set_column(TOTAL_COL, TOTAL_COL, 20)
 
@@ -447,17 +463,8 @@ class MoneyExcel(object):
         self.worksheet.write_formula(4, COUNT_COL, count_formula)
         self.worksheet.write_formula(4, TOTAL_COL, sum_formula, self.money_format)
 
+    def close(self):
+        """Close the excel file."""
         self.worksheet.autofilter(0, 0, self.data_count, URL_COL)
 
         self.workbook.close()
-
-
-# fetch_and_store_urls()
-
-# analyze_money()
-# t20171228_9413837.htm 总成交金额
-# from fetch_url import analyze_money
-# f = open("html/t20170531_8310650.htm")
-# doc = f.read()
-# find_money(doc)
-# 2805, 211

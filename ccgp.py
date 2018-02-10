@@ -7,7 +7,6 @@ import urllib
 import datetime
 from enum import Enum
 
-html_store = "html"
 ccgp_search_url = "http://search.ccgp.gov.cn/bxsearch"
 chrome_headers = {"user-agent": "Mozilla/5.0 (X11; Linux x86_64) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -15,6 +14,8 @@ chrome_headers = {"user-agent": "Mozilla/5.0 (X11; Linux x86_64) "
 
 
 def fetch_ccgp_bid_info(keyword, pages, filename, **kwargs):
+    """Fetch and store bidding information."""
+
     bid = BidInfo()
     if os.path.isfile(filename):
         bid.load(filename)
@@ -44,6 +45,8 @@ def fetch_ccgp_bid_info(keyword, pages, filename, **kwargs):
 
 
 class BidType(Enum):
+    """Bidding type supported by ccgp."""
+
     ALL = 0,
     CALL_FOR_BIDDING = 1,
     SUCCESSFUL_BIDDING = 7,
@@ -51,6 +54,8 @@ class BidType(Enum):
 
 
 def bid_type_to_string(bid_type):
+    """Return string representation of bidding type."""
+
     map = {BidType.ALL: '0',
            BidType.CALL_FOR_BIDDING: '1',
            BidType.SUCCESSFUL_BIDDING: '7',
@@ -60,6 +65,8 @@ def bid_type_to_string(bid_type):
 
 
 def fetch_search_page(keyword, pageno, **kwargs):
+    """Fetch and return one page of search result."""
+
     date_fmt = '%Y:%m:%d'
     today = datetime.date.today()
     week_before = today - datetime.timedelta(weeks=1)
@@ -98,10 +105,14 @@ def fetch_search_page(keyword, pageno, **kwargs):
 
 
 def fetch_bid_page(link):
+    """Fetch bidding announcement web page."""
+
     return http_get_html(link)
 
 
 def parse_search_page(search_doc):
+    """Parse search result page. Return a list of entries found."""
+
     soup = BeautifulSoup(search_doc, "html.parser")
     ul = soup.find("ul", class_="vT-srch-result-list-bid")
     li = ul.find("li")
@@ -116,6 +127,8 @@ def parse_search_page(search_doc):
 
 
 def parse_html_li_tag(li):
+    """Parse a \"li\" tag for bidding description, url, and buyer."""
+
     entry = BidEntry()
     a = li.find("a")
     if a:
@@ -132,6 +145,8 @@ def parse_html_li_tag(li):
 
 
 def http_get_html(link, payload=None):
+    """Fetch a html web page. Retry three times when timeout."""
+
     for i in range(3):
         try:
             response = requests.get(link, params=payload,
@@ -146,6 +161,8 @@ def http_get_html(link, payload=None):
 
 
 def fetch_and_store_bids(bid_list, directory):
+    """Fetch and store html web pages of a list of bidding information"""
+
     for bid in bid_list:
         bid_page = fetch_bid_page(bid.link)
         html_path = urllib.parse.urlparse(bid.link).path

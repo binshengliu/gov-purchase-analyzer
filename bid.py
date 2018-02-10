@@ -4,9 +4,7 @@ import urllib
 
 
 class BidEntry(object):
-    """Documentation for BidEntry
-
-    """
+    """Bidding information: description, url, date, and buyer."""
     def __init__(self):
         super(BidEntry, self).__init__()
         self.desc = None
@@ -45,9 +43,7 @@ class BidEntry(object):
 
 
 class BidInfo(object):
-    """Documentation for BidInfo
-
-    """
+    """A collection of biddings."""
     def __init__(self):
         super(BidInfo, self).__init__()
         self.entries = []
