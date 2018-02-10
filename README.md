@@ -9,7 +9,7 @@ of money.
 from ccgp import fetch_ccgp_bid_info, BidType
 fetch_ccgp_bid_info('keyword', how_many_pages, 
                     'name.json',  type=BidType.CALL_FOR_BIDDING,
-					start='2018-01-01', end='2018-01-31')
+                    start='2018-01-01', end='2018-01-31')
 ```
 
 Bid types:
