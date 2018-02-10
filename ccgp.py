@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 from bid import BidInfo, BidEntry
 import sys
 import urllib
+import datetime
+from enum import Enum
 
 html_store = "html"
 ccgp_search_url = "http://search.ccgp.gov.cn/bxsearch"
@@ -12,7 +14,7 @@ chrome_headers = {"user-agent": "Mozilla/5.0 (X11; Linux x86_64) "
                   "Chrome/64.0.3282.119 Safari/537.36"}
 
 
-def fetch_ccgp_bid_info(filename, pages):
+def fetch_ccgp_bid_info(keyword, pages, filename, **kwargs):
     bid = BidInfo()
     if os.path.isfile(filename):
         bid.load(filename)
@@ -27,7 +29,7 @@ def fetch_ccgp_bid_info(filename, pages):
     begin_page = bid.next_page
     for pageno in range(begin_page, begin_page + pages):
         sys.stderr.write("Page {}:\n".format(pageno))
-        search_page = fetch_search_page(pageno)
+        search_page = fetch_search_page(keyword, pageno, **kwargs)
         bid_list = parse_search_page(search_page)
 
         fetch_and_store_bids(bid_list, directory)
@@ -41,7 +43,27 @@ def fetch_ccgp_bid_info(filename, pages):
         bid.save(filename)
 
 
-def fetch_search_page(pageno):
+class BidType(Enum):
+    ALL = 0,
+    CALL_FOR_BIDDING = 1,
+    SUCCESSFUL_BIDDING = 7,
+    DEAL = 11
+
+
+def bid_type_to_string(bid_type):
+    map = {BidType.ALL: '0',
+           BidType.CALL_FOR_BIDDING: '1',
+           BidType.SUCCESSFUL_BIDDING: '7',
+           BidType.DEAL: '11'}
+
+    return map[bid_type]
+
+
+def fetch_search_page(keyword, pageno, **kwargs):
+    date_fmt = '%Y:%m:%d'
+    today = datetime.date.today()
+    week_before = today - datetime.timedelta(weeks=1)
+
     payload = {
         "searchtype": "1",
         "page_index": str(pageno),
@@ -51,15 +73,27 @@ def fetch_search_page(pageno):
         "pinMu": "0",
         "bidType": "0",
         "dbselect": "bidx",
-        "kw": "大数据",
-        "start_time": "2017:01:01",
-        "end_time": "2017:12:31",
+        "kw": keyword,
+        "start_time": today.strftime(date_fmt),
+        "end_time": week_before.strftime(date_fmt),
         "timeType": "6",
         "displayZone": "",
         "zoneId": "",
         "pppStatus": "0",
         "agentName": "",
     }
+
+    if 'type' in kwargs:
+        payload['bidType'] = bid_type_to_string(kwargs['type'])
+
+    if 'start' in kwargs:
+        start = datetime.datetime.strptime(kwargs['start'], '%Y-%m-%d')
+        payload['start_time'] = start.strftime(date_fmt)
+
+    if 'end' in kwargs:
+        end = datetime.datetime.strptime(kwargs['end'], '%Y-%m-%d')
+        payload['end_time'] = end.strftime(date_fmt)
+
     return http_get_html(ccgp_search_url, payload=payload)
 
 
