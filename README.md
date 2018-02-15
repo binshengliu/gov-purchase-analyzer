@@ -1,4 +1,4 @@
-# Government Bidding Analyzer
+# Government Bidding Analyzer [![Build Status](https://travis-ci.org/lbsx/gov-purchase-analyzer.svg?branch=master)](https://travis-ci.org/lbsx/gov-purchase-analyzer)
 
 Fetch bidding information from government website and analyze amount
 of money.
